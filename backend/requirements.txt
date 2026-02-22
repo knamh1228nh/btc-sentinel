@@ -1,0 +1,11 @@
+# Python 3.9+ 권장. Python 3.13 사용 시 아래 버전으로 wheel 설치가 수월합니다.
+fastapi>=0.104.0,<1.0
+uvicorn[standard]>=0.24.0
+ccxt>=4.0.0
+supabase>=2.0.0
+google-generativeai>=0.3.0
+python-dotenv>=1.0.0
+# pydantic 2.10+ 사용 시 pydantic-core에 대한 pre-built wheel 지원이 넓음 (Python 3.12/3.13 포함)
+pydantic>=2.6.0,<3
+pydantic-settings>=2.2.0,<3
+websocket-client>=1.6.0

@@ -1,0 +1,2 @@
+class MiniSentinelError(Exception):
+    pass

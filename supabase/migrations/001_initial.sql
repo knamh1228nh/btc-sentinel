@@ -1,0 +1,7 @@
+-- Mini Sentinel initial schema (예시)
+-- CREATE TABLE IF NOT EXISTS alerts (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   title TEXT,
+--   severity TEXT,
+--   created_at TIMESTAMPTZ DEFAULT now()
+-- );

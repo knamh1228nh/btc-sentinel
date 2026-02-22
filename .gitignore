@@ -1,0 +1,27 @@
+# 환경/시크릿 (Key 포함 위험 파일)
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+KEY_URL.txt
+*KEY*.txt
+*key*.txt
+*secret*.txt
+*credentials*
+*.pem
+secrets/
+**/secrets/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+
+# IDE
+.vscode/

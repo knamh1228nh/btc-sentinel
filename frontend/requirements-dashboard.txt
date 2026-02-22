@@ -1,0 +1,8 @@
+# Step 3. Dashboard 전용 의존성 (frontend 폴더에서 사용)
+# 실행: pip install -r requirements-dashboard.txt && streamlit run dashboard.py
+streamlit>=1.28.0
+pandas>=2.0.0
+supabase>=2.0.0
+plotly>=5.18.0
+python-dotenv>=1.0.0
+streamlit-autorefresh>=0.0.1

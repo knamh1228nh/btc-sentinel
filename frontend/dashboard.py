@@ -16,6 +16,7 @@ if env_path.exists():
     from dotenv import load_dotenv
     load_dotenv(env_path)
 
+import json
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -62,6 +63,23 @@ def get_supabase():
 
 
 @st.cache_data(ttl=10)
+def fetch_present_price():
+    """백엔드 API로 현재 비트코인 가격(present_price) 조회 (10초 캐시)."""
+    base = os.getenv("NEXT_PUBLIC_API_URL") or os.getenv("API_URL") or "http://localhost:8000"
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            f"{base.rstrip('/')}/api/v1/present-price",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+            return data.get("present_price")
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=10)
 def fetch_anomaly_alerts():
     """anomaly_alerts 테이블 최신순 조회 (10초 캐시). select(*) 로 comment 포함 전체 컬럼."""
     supabase = get_supabase()
@@ -100,6 +118,8 @@ def main():
         return
     if df.empty:
         st.info("아직 anomaly_alerts 데이터가 없습니다. 백엔드에서 이상 징후가 감지되면 여기에 표시됩니다.")
+        present_price = fetch_present_price()
+        st.metric("현재 비트코인 가격 (present_price)", f"{present_price:,.0f}" if present_price is not None else "-", help="Upbit API 실시간 KRW-BTC 시세")
         return
 
     # 최근 이상 징후 메트릭 카드 (상단)
@@ -122,8 +142,8 @@ def main():
     with col2:
         st.metric("최근 24시간", n_24h, help="최근 24시간 내 발생 건수")
     with col3:
-        latest_price = df["current_price"].iloc[0] if "current_price" in df.columns and len(df) else None
-        st.metric("최신 감지 가격 (KRW)", f"{latest_price:,.0f}" if latest_price is not None else "-", help="가장 최근 행의 current_price")
+        present_price = fetch_present_price()
+        st.metric("현재 비트코인 가격 (present_price)", f"{present_price:,.0f}" if present_price is not None else "-", help="Upbit API 실시간 KRW-BTC 시세")
     with col4:
         latest_type = df["anomaly_type"].iloc[0] if "anomaly_type" in df.columns and len(df) else "-"
         st.metric("최신 유형", str(latest_type), help="가장 최근 행의 anomaly_type")

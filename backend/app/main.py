@@ -24,36 +24,9 @@ def _fetch_current_btc_price_krw() -> Optional[float]:
     return None
 
 
-def _test_supabase_insert():
-    """일시적: Supabase anomaly_alerts에 테스트 행 1건 삽입"""
-    try:
-        from datetime import datetime, timezone
-        from app.core.database.supabase import get_supabase_client
-        supabase = get_supabase_client()
-        row = {
-            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
-            "symbol": "KRW-BTC",
-            "anomaly_type": "manual_test",
-            "current_price": 100,
-            "volume": 10,
-            "confidence": 0,
-            "details": {"reason": "Manual Connection Test"},
-        }
-        supabase.table("anomaly_alerts").insert(row).execute()
-        print("[TEST] Supabase Insert Success!")
-    except Exception as e:
-        import traceback
-        print("[TEST] Supabase Insert Failed!")
-        print(f"[TEST] Error type: {type(e).__name__}")
-        print(f"[TEST] Error message: {e}")
-        traceback.print_exc()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """애플리케이션 생명주기 관리"""
-    # 일시적: Supabase 테스트 삽입 (다른 로직과 무관하게 즉시 실행)
-    _test_supabase_insert()
     # 서버 시작 시 메시지 및 현재 비트코인 가격 즉시 출력
     print("[START] 서버가 정상적으로 시작되었습니다.")
     btc_price = _fetch_current_btc_price_krw()
@@ -79,6 +52,13 @@ app = FastAPI(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.get("/api/v1/present-price")
+def get_present_price():
+    """현재 비트코인(KRW-BTC) 시세를 present_price로 반환"""
+    price = _fetch_current_btc_price_krw()
+    return {"present_price": price}
 
 
 @app.get("/health")

@@ -6,10 +6,11 @@ from app.core.detection.models import MarketData, DetectionResult
 _supabase_client = None
 
 def get_supabase_client():
-    """Supabase 클라이언트 싱글톤"""
+    """Supabase 클라이언트 싱글톤. SERVICE_ROLE_KEY가 있으면 사용 (RLS 우회, comment UPDATE 등 가능)."""
     global _supabase_client
     if _supabase_client is None:
-        _supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        key = getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", None) or settings.SUPABASE_KEY
+        _supabase_client = create_client(settings.SUPABASE_URL, key)
     return _supabase_client
 
 def save_anomaly_event(market_data: MarketData, detection_result: DetectionResult):

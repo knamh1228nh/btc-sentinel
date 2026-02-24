@@ -18,6 +18,16 @@ def analyze_with_gemini(
     감지된 시세(가격, 거래량, 변동률)를 Gemini에 전달하고
     '현재 시장 상황이 기술적으로 어떤 의미인지 3줄 이내로' 분석 요청.
     """
+    if not getattr(settings, "GEMINI_API_KEY", None) or not str(settings.GEMINI_API_KEY).strip():
+        logger.warning(
+            "[Gemini] GEMINI_API_KEY가 비어 있음. backend/.env에 GEMINI_API_KEY를 설정하면 "
+            "이상 징후 원인이 대시보드에 표시됩니다."
+        )
+        return AnalysisResult(
+            summary="",
+            risk_level="error",
+            raw_response="GEMINI_API_KEY not set",
+        )
     logger.info("[Gemini] 분석 요청 시작 symbol=%s price=%s", symbol, current_price)
     try:
         import google.generativeai as genai

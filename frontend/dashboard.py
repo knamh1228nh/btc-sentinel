@@ -52,6 +52,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def format_krw(val):
+    """KRW 등 숫자를 세 자리마다 콤마로 포맷 (None/NaN은 '-' 반환)."""
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return "-"
+    try:
+        return f"{float(val):,.0f}"
+    except (TypeError, ValueError):
+        return "-"
+
+
 @st.cache_resource
 def get_supabase():
     url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
@@ -62,9 +72,26 @@ def get_supabase():
     return create_client(url, key)
 
 
+def _fetch_btc_from_upbit():
+    """Upbit 공개 API로 현재 BTC/KRW 가격 직접 조회 (백엔드 미사용)."""
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "https://api.upbit.com/v1/ticker?markets=KRW-BTC",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+            if data and isinstance(data, list) and len(data) > 0:
+                return float(data[0].get("trade_price", 0))
+    except Exception:
+        pass
+    return None
+
+
 @st.cache_data(ttl=10)
 def fetch_present_price():
-    """백엔드 API로 현재 비트코인 가격(present_price) 조회 (10초 캐시)."""
+    """현재 비트코인 가격: 백엔드 API 시도 후 실패 시 Upbit 직접 조회 (10초 캐시)."""
     base = os.getenv("NEXT_PUBLIC_API_URL") or os.getenv("API_URL") or "http://localhost:8000"
     try:
         import urllib.request
@@ -74,9 +101,12 @@ def fetch_present_price():
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode())
-            return data.get("present_price")
+            price = data.get("present_price")
+            if price is not None:
+                return float(price)
     except Exception:
-        return None
+        pass
+    return _fetch_btc_from_upbit()
 
 
 @st.cache_data(ttl=10)
@@ -119,7 +149,7 @@ def main():
     if df.empty:
         st.info("아직 anomaly_alerts 데이터가 없습니다. 백엔드에서 이상 징후가 감지되면 여기에 표시됩니다.")
         present_price = fetch_present_price()
-        st.metric("현재 비트코인 가격 (present_price)", f"{present_price:,.0f}" if present_price is not None else "-", help="Upbit API 실시간 KRW-BTC 시세")
+        st.metric("현재 비트코인 가격 (present_price)", format_krw(present_price), help="Upbit API 실시간 KRW-BTC 시세")
         return
 
     # 최근 이상 징후 메트릭 카드 (상단)
@@ -143,7 +173,7 @@ def main():
         st.metric("최근 24시간", n_24h, help="최근 24시간 내 발생 건수")
     with col3:
         present_price = fetch_present_price()
-        st.metric("현재 비트코인 가격 (present_price)", f"{present_price:,.0f}" if present_price is not None else "-", help="Upbit API 실시간 KRW-BTC 시세")
+        st.metric("현재 비트코인 가격 (present_price)", format_krw(present_price), help="Upbit API 실시간 KRW-BTC 시세")
     with col4:
         latest_type = df["anomaly_type"].iloc[0] if "anomaly_type" in df.columns and len(df) else "-"
         st.metric("최신 유형", str(latest_type), help="가장 최근 행의 anomaly_type")
@@ -170,7 +200,7 @@ def main():
                 margin=dict(l=60, r=40, t=40, b=60),
                 height=360,
                 xaxis=dict(gridcolor="#334155"),
-                yaxis=dict(gridcolor="#334155"),
+                yaxis=dict(gridcolor="#334155", tickformat=",", title="가격 (KRW)"),
             )
             fig.update_traces(line=dict(color="#38bdf8", width=2))
             st.plotly_chart(fig, use_container_width=True)
@@ -195,7 +225,10 @@ def main():
         show_df["시각"] = pd.NaT
     show_df["symbol"] = df["symbol"] if "symbol" in df.columns else ""
     show_df["anomaly_type"] = df["anomaly_type"] if "anomaly_type" in df.columns else ""
-    show_df["current_price"] = df["current_price"] if "current_price" in df.columns else None
+    if "current_price" in df.columns:
+        show_df["current_price"] = df["current_price"].apply(format_krw)
+    else:
+        show_df["current_price"] = ["-"] * len(df)
     show_df["price_change_rate"] = df["price_change_rate"] if "price_change_rate" in df.columns else None
     # reason: reason 컬럼 또는 details.reason
     if "reason" in df.columns:
@@ -217,12 +250,34 @@ def main():
         "시각": st.column_config.DatetimeColumn("시각", format="YYYY-MM-DD HH:mm:ss"),
         "symbol": st.column_config.TextColumn("심볼"),
         "anomaly_type": st.column_config.TextColumn("유형"),
-        "current_price": st.column_config.NumberColumn("가격 (KRW)", format="%.0f"),
+        "current_price": st.column_config.TextColumn("가격 (KRW)"),
         "price_change_rate": st.column_config.NumberColumn("변동률 (%)", format="%.2f"),
         "reason": st.column_config.TextColumn("사유", width="medium"),
         "이상 징후 원인": st.column_config.TextColumn("이상 징후 원인 (Gemini)", width="large"),
     }
     st.dataframe(show_df, use_container_width=True, column_config=column_config, height=400)
+
+    # 이상 징후 원인이 모두 비어 있을 때 원인·해결안 안내
+    comments_empty = (show_df["이상 징후 원인"].fillna("").astype(str).str.strip() == "").all() and len(show_df) > 0
+    if comments_empty:
+        with st.expander("⚠️ 이상 징후 원인(Gemini) 칼럼이 비어 있을 때 확인 사항"):
+            st.markdown("""
+**가능한 원인과 해결 방법**
+
+1. **GEMINI_API_KEY 미설정**  
+   - `backend/.env`에 `GEMINI_API_KEY=your_key`를 추가한 뒤 백엔드 서버를 재시작하세요.  
+   - 키 발급: [Google AI Studio](https://aistudio.google.com/apikey)
+
+2. **Gemini 분석이 아직 완료되지 않음**  
+   - 감지 직후 백그라운드에서 분석이 돌아갑니다. 10~30초 뒤 **🔄 수동 새로고침**을 눌러 다시 조회해 보세요.
+
+3. **Supabase UPDATE 권한**  
+   - 백엔드가 `anomaly_alerts` 테이블의 `comment` 컬럼을 UPDATE해야 합니다.  
+   - RLS를 쓰는 경우: `anomaly_alerts`에 UPDATE 허용 정책을 추가하거나, 백엔드 `.env`에서 `SUPABASE_KEY` 대신 **SUPABASE_SERVICE_ROLE_KEY**를 사용하세요. (서비스 롤 키는 RLS를 우회합니다.)
+
+4. **백엔드 로그 확인**  
+   - 터미널에서 `[AI Analyst]`, `[Gemini]`, `Gemini 분석 실패` 로그를 검색해 에러 메시지를 확인하세요.
+            """)
 
     st.markdown('<p class="refresh-hint">💡 10초마다 위쪽 새로고침 버튼을 누르면 최신 데이터로 갱신됩니다.</p>', unsafe_allow_html=True)
 

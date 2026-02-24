@@ -117,6 +117,7 @@ class MarketWatcher:
                 logger.info("[ANOMALY DETECTED] save_anomaly_event 반환 inserted_id=%s", inserted_id)
                 # 비동기: Gemini로 분석 후 comment 업데이트
                 if inserted_id:
+                    price_change_for_ai = anomaly_result.details.get("price_change_rate") or anomaly_result.details.get("change_rate") or market_data.change_rate
                     t = threading.Thread(
                         target=_run_analysis_background,
                         args=(
@@ -124,7 +125,7 @@ class MarketWatcher:
                             market_data.symbol,
                             market_data.price,
                             market_data.volume,
-                            market_data.change_rate,
+                            price_change_for_ai,
                             anomaly_result.details.get("anomaly_type", "unknown"),
                         ),
                         daemon=True,

@@ -179,7 +179,7 @@ def main():
     else:
         st.caption("timestamp 또는 current_price 컬럼이 없어 차트를 그리지 않습니다.")
 
-    # 전체 로그 테이블 (간소화: 시각 하나로 통합, reason·comment 강조)
+    # 전체 로그 테이블 (시각, reason, Gemini 이상 징후 원인 포함)
     st.subheader("전체 로그 (최신순)")
     # 시각: timestamp > created_at > detected_at 순으로 하나만 사용
     time_col = None
@@ -187,7 +187,7 @@ def main():
         if c in df.columns:
             time_col = c
             break
-    cols_show = ["시각", "symbol", "anomaly_type", "current_price", "price_change_rate", "reason", "AI 분석"]
+    cols_show = ["시각", "symbol", "anomaly_type", "current_price", "price_change_rate", "reason", "이상 징후 원인"]
     show_df = pd.DataFrame()
     if time_col:
         show_df["시각"] = pd.to_datetime(df[time_col], utc=True)
@@ -212,7 +212,7 @@ def main():
         ai_text = df["ai_comment"].fillna("")
     else:
         ai_text = pd.Series([""] * len(df))
-    show_df["AI 분석"] = ai_text.astype(str).replace("nan", "")
+    show_df["이상 징후 원인"] = ai_text.astype(str).replace("nan", "")
     column_config = {
         "시각": st.column_config.DatetimeColumn("시각", format="YYYY-MM-DD HH:mm:ss"),
         "symbol": st.column_config.TextColumn("심볼"),
@@ -220,7 +220,7 @@ def main():
         "current_price": st.column_config.NumberColumn("가격 (KRW)", format="%.0f"),
         "price_change_rate": st.column_config.NumberColumn("변동률 (%)", format="%.2f"),
         "reason": st.column_config.TextColumn("사유", width="medium"),
-        "AI 분석": st.column_config.TextColumn("Gemini 분석", width="large"),
+        "이상 징후 원인": st.column_config.TextColumn("이상 징후 원인 (Gemini)", width="large"),
     }
     st.dataframe(show_df, use_container_width=True, column_config=column_config, height=400)
 

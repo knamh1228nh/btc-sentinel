@@ -5,7 +5,7 @@ from app.core.detection.models import MarketData, DetectionResult
 
 
 # 가격 변동률 임계값 (%)
-PRICE_CHANGE_THRESHOLD = 1.0  # 1분 전 대비 1% 이상 변동
+PRICE_CHANGE_THRESHOLD = 0.95  # 1분 전 대비 0.95% 이상 변동
 
 # 거래량 급변 임계값 (%)
 VOLUME_SURGE_THRESHOLD = 50.0  # 50% 이상 증가
@@ -22,7 +22,7 @@ def check_anomalies(
     이상 징후 감지
     
     규칙:
-    1. 가격이 1분 전 대비 1% 이상 변동
+    1. 가격이 1분 전 대비 0.95% 이상 변동
     2. 거래량이 급변 (50% 이상 증가)
     """
     detected = False

@@ -76,6 +76,6 @@ python scripts/test_market_watcher.py
 ## Market Watcher
 
 실시간으로 BTC-KRW 시세를 감시하고 이상 징후를 감지합니다:
-- 가격 변동률 감지 (1분 전 대비 1% 이상)
+- 가격 변동률 감지 (1분 전 대비 0.95% 이상)
 - 거래량 급변 감지
 - 감지된 이벤트는 `anomaly_alerts` 테이블에 저장
